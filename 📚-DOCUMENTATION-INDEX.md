@@ -15,6 +15,7 @@
 | **⚡ `/⚡-DEPLOY-NOW.md`** | **Ultra-quick deployment** | 1 min |
 | **📊 `/📊-DATABASE-TABLES.md`** | **Complete database schema** | 10 min |
 | **📋 `/📋-DATABASE-DEPLOYMENT.md`** | **Deploy database** | 5 min |
+| **📥 `/📥-EXCEL-IMPORT-GUIDE.md`** | **Import old sales from Excel** | 5 min |
 
 ---
 
@@ -36,6 +37,10 @@
 9. **`/database/01-create-tables.sql`** - Create all tables (14 tables)
 10. **`/database/02-create-views.sql`** - Create reporting views (5 views)
 11. **`/database/03-seed-data.sql`** - Populate test data
+
+### **Excel Import (New!):**
+12. **`/📥-EXCEL-IMPORT-GUIDE.md`** - Import old sales from Excel/CSV
+13. **`/📥-IMPORT-DEPLOYMENT.md`** - Deploy import feature
 
 ---
 

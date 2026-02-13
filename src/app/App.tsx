@@ -1,67 +1,213 @@
-import React, { useState } from 'react';
-import { Sidebar } from '@/app/components/Sidebar';
-import { OwnerDashboard } from '@/app/components/OwnerDashboard';
-import { ManagerDashboard } from '@/app/components/ManagerDashboard';
-import { StaffDashboard } from '@/app/components/StaffDashboard';
-import { POSScreen } from '@/app/components/POSScreen';
-import { ExchangeScreen } from '@/app/components/ExchangeScreen';
-import { InventoryOverview } from '@/app/components/InventoryOverview';
-import { UserRoleManagement } from '@/app/components/UserRoleManagement';
-import { ReportsSection } from '@/app/components/ReportsSection';
-import { WhatsAppPanel } from '@/app/components/WhatsAppPanel';
-import { SettingsScreen } from '@/app/components/SettingsScreen';
-import { StatusBar, StatusBarItem, StatusBarSeparator } from '@/app/components/StatusBar';
-import { LoginScreen } from '@/app/components/LoginScreen';
+import React, { useState, useEffect } from 'react';
+import { LoginScreen } from './components/LoginScreen';
+import { Sidebar } from './components/Sidebar';
+import { StatusBar, StatusBarItem, StatusBarSeparator } from './components/StatusBar';
+import { StaffDashboard } from './components/StaffDashboard';
+import { ManagerDashboard } from './components/ManagerDashboard';
+import { OwnerDashboard } from './components/OwnerDashboard';
+import { POSScreen } from './components/POSScreen';
+import { RealPOSScreen } from './components/RealPOSScreen';
+import { FinalPOSScreen } from './components/FinalPOSScreen';
+import { ExchangeScreen } from './components/ExchangeScreen';
+import { InventoryOverview } from './components/InventoryOverview';
+import { ReportsSection } from './components/ReportsSection';
+import { UserRoleManagement } from './components/UserRoleManagement';
+import { UserManagement } from './components/UserManagement';
+import { SettingsScreen } from './components/SettingsScreen';
+import { WhatsAppPanel } from './components/WhatsAppPanel';
+import { BulkImportPanel } from './components/BulkImportPanel';
+import { GodownInwardEntry } from './components/GodownInwardEntry';
+import { LegacyPRMASTImporter } from './components/LegacyPRMASTImporter';
+import { signIn, signOut, getCurrentSession, type User, type UserRole } from '@/app/utils/auth';
 
-// Match database roles exactly
-type UserRole = 'OWNER' | 'MANAGER' | 'STORE_STAFF' | 'GODOWN_STAFF' | 'ACCOUNTANT';
+export type { UserRole };
+export type { User };
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userInfo, setUserInfo] = useState<{ 
-    username: string; 
-    location: string; 
-    role: UserRole;
-    userId: string;
-  } | null>(null);
+export type MenuOption =
+  | 'dashboard'
+  | 'pos'
+  | 'exchange'
+  | 'inventory'
+  | 'godown-inward'
+  | 'legacy-import'
+  | 'reports'
+  | 'users'
+  | 'whatsapp'
+  | 'bulk-import'
+  | 'settings';
 
-  const handleLogin = (credentials: { username: string; password: string; location: string }) => {
-    // In production, this validates against Supabase Auth
-    // For demo: role detection based on username
-    console.log('Login attempt:', credentials);
+function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [activeMenu, setActiveMenu] = useState<MenuOption>('dashboard');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Check for existing session on mount
+  const checkSession = async () => {
+    const session = await getCurrentSession();
+    if (session) {
+      setUser(session.user);
+    }
+    setLoading(false);
+  };
+
+  // Register Service Worker for PWA on mount
+  useEffect(() => {
+    // Check for existing session
+    checkSession();
     
-    let role: UserRole = 'STORE_STAFF';
-    const username = credentials.username.toLowerCase();
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((registration) => {
+            console.log('✅ Service Worker registered:', registration.scope);
+            
+            // Check for updates periodically
+            setInterval(() => {
+              registration.update();
+            }, 60 * 60 * 1000); // Check every hour
+          })
+          .catch((error) => {
+            console.error('❌ Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    // Create manifest as data URI to avoid file serving issues
+    const manifestData = {
+      name: "Retail Management System",
+      short_name: "Retail POS",
+      description: "Business-grade retail software with Windows Fluent Design",
+      start_url: window.location.origin + "/",
+      scope: window.location.origin + "/",
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#0078D4",
+      orientation: "any",
+      icons: [
+        {
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192'%3E%3Crect width='192' height='192' fill='%230078D4'/%3E%3Ctext x='96' y='105' font-family='Arial' font-size='64' fill='white' text-anchor='middle' font-weight='bold'%3ER%3C/text%3E%3Ctext x='96' y='155' font-family='Arial' font-size='24' fill='white' text-anchor='middle'%3EPOS%3C/text%3E%3C/svg%3E",
+          sizes: "192x192",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        },
+        {
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Crect width='512' height='512' fill='%230078D4'/%3E%3Ctext x='256' y='280' font-family='Arial' font-size='180' fill='white' text-anchor='middle' font-weight='bold'%3ER%3C/text%3E%3Ctext x='256' y='400' font-family='Arial' font-size='64' fill='white' text-anchor='middle'%3EPOS%3C/text%3E%3C/svg%3E",
+          sizes: "512x512",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        }
+      ],
+      categories: ["business", "productivity", "shopping"]
+    };
+
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(manifestBlob);
+
+    // Remove any existing manifest link
+    const existingLink = document.querySelector('link[rel="manifest"]');
+    if (existingLink) {
+      existingLink.remove();
+    }
+
+    // Add new manifest link
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    manifestLink.href = manifestURL;
+    document.head.appendChild(manifestLink);
     
-    // Role detection
-    if (username.includes('owner') || username.includes('jariwala')) {
-      role = 'OWNER';
-    } else if (username.includes('manager') || username.includes('admin')) {
-      role = 'MANAGER';
-    } else if (username.includes('godown') || username.includes('warehouse')) {
-      role = 'GODOWN_STAFF';
-    } else if (username.includes('accountant') || username.includes('accounts')) {
-      role = 'ACCOUNTANT';
+    console.log('✅ Manifest injected via blob URL');
+
+    // Add theme-color meta tag
+    if (!document.querySelector('meta[name="theme-color"]')) {
+      const themeColor = document.createElement('meta');
+      themeColor.name = 'theme-color';
+      themeColor.content = '#0078D4';
+      document.head.appendChild(themeColor);
+    }
+
+    // Listen for PWA install prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+      console.log('💾 PWA install prompt ready');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if already installed
+    window.addEventListener('appinstalled', () => {
+      console.log('✅ PWA installed successfully');
+      setShowInstallButton(false);
+      setDeferredPrompt(null);
+    });
+
+    console.log('🚀 PWA features initialized');
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      URL.revokeObjectURL(manifestURL);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert('PWA is already installed or install prompt is not available');
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
+
+    if (outcome === 'accepted') {
+      console.log('✅ User accepted the install prompt');
+    } else {
+      console.log('❌ User dismissed the install prompt');
+    }
+
+    setDeferredPrompt(null);
+    setShowInstallButton(false);
+  };
+
+  const handleLogin = async (credentials: { username: string; password: string; location: string }) => {
+    setLoading(true);
+    
+    const result = await signIn(credentials);
+    
+    if ('error' in result) {
+      alert(result.error);
+      setLoading(false);
+      return;
     }
     
-    setUserInfo({
-      username: credentials.username,
-      location: credentials.location,
-      role: role,
-      userId: 'demo-user-id', // In production: from Supabase Auth
-    });
-    setIsAuthenticated(true);
+    setUser(result.user);
+    setLoading(false);
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserInfo(null);
-    setCurrentPage('dashboard');
+  const handleLogout = async () => {
+    await signOut();
+    setUser(null);
+    setActiveMenu('dashboard');
   };
+
+  // Show loading screen
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--muted-foreground)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show login screen if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
@@ -70,85 +216,78 @@ export default function App() {
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Hide on POS for maximum space */}
-        {currentPage !== 'pos' && (
+        {activeMenu !== 'pos' && (
           <Sidebar 
-            currentPage={currentPage} 
-            onNavigate={setCurrentPage} 
-            userRole={userInfo?.role} 
+            currentPage={activeMenu} 
+            onNavigate={setActiveMenu} 
+            userRole={user.role} 
           />
         )}
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-auto">
-          {currentPage === 'dashboard' && (
+          {activeMenu === 'dashboard' && (
             <>
-              {userInfo?.role === 'OWNER' && <OwnerDashboard />}
-              {userInfo?.role === 'MANAGER' && <ManagerDashboard />}
-              {(userInfo?.role === 'STORE_STAFF' || userInfo?.role === 'GODOWN_STAFF') && (
+              {user.role === 'OWNER' && <OwnerDashboard />}
+              {user.role === 'MANAGER' && <ManagerDashboard />}
+              {(user.role === 'STORE_STAFF' || user.role === 'GODOWN_STAFF') && (
                 <StaffDashboard 
-                  role={userInfo.role} 
-                  location={userInfo.location}
-                  onNavigate={setCurrentPage}
+                  role={user.role} 
+                  location={user.location}
+                  onNavigate={setActiveMenu}
                 />
-              )}
-              {userInfo?.role === 'ACCOUNTANT' && (
-                <div className="flex-1 flex items-center justify-center p-8">
-                  <div className="text-center max-w-md">
-                    <div className="w-16 h-16 bg-[var(--accent)] rounded-lg flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-8 h-8 text-[var(--primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <h2 className="text-xl font-semibold mb-2">Accountant Dashboard</h2>
-                    <p className="text-[var(--muted-foreground)] mb-6">
-                      View reports and financial data. You have read-only access to all locations.
-                    </p>
-                    <button
-                      onClick={() => setCurrentPage('reports')}
-                      className="h-10 px-6 bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] rounded-[4px] font-medium"
-                    >
-                      View Reports
-                    </button>
-                  </div>
-                </div>
               )}
             </>
           )}
           
-          {currentPage === 'pos' && userInfo?.role !== 'ACCOUNTANT' && (
-            <POSScreen 
-              storeName={userInfo?.location || 'Main Store'} 
-              onClose={() => setCurrentPage('dashboard')}
+          {activeMenu === 'pos' && user.role !== 'GODOWN_STAFF' && (
+            <FinalPOSScreen 
+              locationId={user.location_id}
+              locationName={user.location_name} 
+              onClose={() => setActiveMenu('dashboard')}
+              onExchange={() => setActiveMenu('exchange')}
             />
           )}
           
-          {currentPage === 'exchange' && userInfo?.role !== 'ACCOUNTANT' && userInfo?.role !== 'GODOWN_STAFF' && (
+          {activeMenu === 'exchange' && user.role !== 'GODOWN_STAFF' && (
             <ExchangeScreen />
           )}
           
-          {currentPage === 'inventory' && <InventoryOverview />}
+          {activeMenu === 'inventory' && <InventoryOverview />}
           
-          {currentPage === 'users' && (userInfo?.role === 'OWNER' || userInfo?.role === 'MANAGER') && (
+          {activeMenu === 'users' && (user.role === 'OWNER' || user.role === 'MANAGER') && (
             <UserRoleManagement />
           )}
           
-          {currentPage === 'reports' && <ReportsSection userRole={userInfo?.role} />}
+          {activeMenu === 'reports' && <ReportsSection userRole={user.role} />}
           
-          {currentPage === 'settings' && <SettingsScreen />}
+          {activeMenu === 'settings' && <SettingsScreen />}
           
-          {currentPage === 'whatsapp' && <WhatsAppPanel />}
+          {activeMenu === 'whatsapp' && <WhatsAppPanel />}
+          
+          {activeMenu === 'import' && (user.role === 'OWNER' || user.role === 'MANAGER') && (
+            <BulkImportPanel />
+          )}
+          
+          {activeMenu === 'legacy-import' && (user.role === 'OWNER' || user.role === 'MANAGER') && (
+            <LegacyPRMASTImporter />
+          )}
+          
+          {activeMenu === 'godown-inward' && user.role === 'GODOWN_STAFF' && (
+            <GodownInwardEntry />
+          )}
         </main>
       </div>
 
       {/* Status Bar */}
       <StatusBar>
-        <StatusBarItem icon="user">{userInfo?.username || 'User'}</StatusBarItem>
+        <StatusBarItem label="User" value={user.username || 'User'} />
         <StatusBarSeparator />
-        <StatusBarItem icon="location">{userInfo?.location || 'Main Store'}</StatusBarItem>
+        <StatusBarItem label="Location" value={user.location || 'Main Store'} />
         <StatusBarSeparator />
-        <StatusBarItem icon="role">{userInfo?.role.replace('_', ' ')}</StatusBarItem>
+        <StatusBarItem label="Role" value={user.role.replace('_', ' ')} />
         <StatusBarSeparator />
-        <StatusBarItem icon="sync">Online</StatusBarItem>
+        <StatusBarItem label="Status" value="Online" />
         
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -165,3 +304,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;

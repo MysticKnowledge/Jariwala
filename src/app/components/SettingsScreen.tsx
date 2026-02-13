@@ -3,6 +3,8 @@ import { Panel } from '@/app/components/Panel';
 import { FormField, TextInput } from '@/app/components/FormField';
 import { DataTable, Column } from '@/app/components/DataTable';
 import { Badge } from '@/app/components/Badge';
+import { UserManagement } from '@/app/components/UserManagement';
+import { getCurrentSession } from '@/app/utils/auth';
 import {
   Settings,
   Building,
@@ -32,7 +34,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 
-type SettingsTab = 'business' | 'locations' | 'tax' | 'amazon' | 'whatsapp' | 'sync';
+type SettingsTab = 'business' | 'locations' | 'tax' | 'amazon' | 'whatsapp' | 'sync' | 'users';
 
 interface StoreLocation {
   id: string;
@@ -301,6 +303,7 @@ export function SettingsScreen() {
     { id: 'amazon' as SettingsTab, label: 'Amazon Integration', icon: ShoppingBag },
     { id: 'whatsapp' as SettingsTab, label: 'WhatsApp Numbers', icon: MessageSquare },
     { id: 'sync' as SettingsTab, label: 'Sync Settings', icon: RefreshCw },
+    { id: 'users' as SettingsTab, label: 'User Management', icon: Key },
   ];
 
   return (
@@ -970,6 +973,18 @@ export function SettingsScreen() {
                 </div>
               </Panel>
             </>
+          )}
+
+          {/* User Management Tab */}
+          {activeTab === 'users' && (
+            <UserManagement 
+              currentUserRole="OWNER" 
+              locations={mockStoreLocations.map(loc => ({
+                id: loc.id,
+                location_name: loc.name,
+                location_type: loc.city === 'Pune' && loc.name.includes('Godown') ? 'GODOWN' : 'STORE'
+              }))}
+            />
           )}
         </div>
       </div>
